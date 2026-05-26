@@ -3,10 +3,13 @@ const express=require("express");
 const cors=require("cors");
 const multer=require("multer");
 
+
 const app=express();
 
 app.use(cors());
 app.use(express.json());
+
+
 
 
 
@@ -49,7 +52,20 @@ app.post("/upload",upload.single("audio"),(req,res)=>{
     });
 });
 
+const mongoose=require("mongoose");
+require("dotenv").config();
+mongoose.connect(process.env.MONGO_URI)
+.then(()=>{
+    console.log("monhodb connected");
+})
+
+.catch((err)=>{
+    console.log(err);
+
+})
+
 app.listen(PORT,()=>{
     console.log(`server is running  on port ${PORT}`);
 
 })
+
