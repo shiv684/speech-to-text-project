@@ -3,12 +3,21 @@ const cors = require("cors");
 const multer = require("multer");
 const mongoose = require("mongoose");
 const fs = require("fs");
-const https = require("https");
+const { AssemblyAI } = require("assemblyai");
 require("dotenv").config();
 
 const app = express();
-app.use(cors());
+
+app.use(cors({
+  origin: "http://localhost:5173",
+  methods: ["GET", "POST"],
+}));
 app.use(express.json());
+
+// ── AssemblyAI Client ─────────────────────────────────────
+const client = new AssemblyAI({
+  apiKey: process.env.ASSEMBLYAI_API_KEY,
+});
 
 // ── Multer Setup ──────────────────────────────────────────
 const storage = multer.diskStorage({
@@ -32,63 +41,63 @@ const PORT = 3000;
 
 // ── Home Route ────────────────────────────────────────────
 app.get("/", (req, res) => {
-  res.send("backend is running");
+  res.send("Backend is running");
 });
 
 // ── Upload Route ──────────────────────────────────────────
 app.post("/upload", upload.single("audio"), (req, res) => {
   res.json({
-    message: "upload successfully",
+    message: "File uploaded successfully",
     file: req.file,
   });
 });
 
-// ── Transcribe Route (SDK nahi, direct API call) ──────────
+// ── Transcribe Route ──────────────────────────────────────
 app.post("/transcribe", upload.single("audio"), async (req, res) => {
   try {
+    // Validate file
     if (!req.file) {
       return res.status(400).json({
         success: false,
-        message: "file not found",
+        message: "No audio file received",
       });
     }
 
-    const audioData = fs.readFileSync(req.file.path);
+    const filePath = req.file.path;
 
-    // Deepgram ko direct fetch se call karo
-    const fetch = (await import("node-fetch")).default;
+    // ✅ AssemblyAI transcribe with speech_model
+   const result = await client.transcripts.transcribe({
+  audio: fs.createReadStream(filePath),
+  speech_models: ["universal-2"],
+  language_detection: true,
+  punctuate: true,
+  format_text: true,
+});
 
-    // ✅ Ye use karo — auto detect karega Hindi ya English
+    // Delete file after transcription
+    fs.unlinkSync(filePath);
 
-const response = await fetch(
-  "https://api.deepgram.com/v1/listen?model=whisper-large&detect_language=true&punctuate=true",
-  {
-    method: "POST",
-    headers: {
-      Authorization: `Token ${process.env.DEEPGRAM_API_KEY}`,
-      "Content-Type": req.file.mimetype,
-    },
-    body: audioData,
-  }
-);
+    // Check if transcript is empty
+    if (!result.text || result.text.trim() === "") {
+      return res.json({
+        success: true,
+        transcript: "",
+        message: "No speech detected. Please speak clearly and try again.",
+      });
+    }
 
-    const data = await response.json();
-
-    // transcript nikalo
-    const transcript =
-    // console.log("Deepgram Response:", JSON.stringify(data, null, 2));
-      data.results.channels[0].alternatives[0].transcript;
-
-    // file delete karo
-    fs.unlinkSync(req.file.path);
-
-    res.json({ success: true, transcript });
+    res.json({
+      success: true,
+      transcript: result.text,
+      language: result.language_code,
+    });
 
   } catch (error) {
-    console.error(error);
+    console.error("Full error:", error);
     res.status(500).json({
       success: false,
-      message: "Transcription fail ho gayi",
+      message: "Transcription failed",
+      error: error.message,
     });
   }
 });
