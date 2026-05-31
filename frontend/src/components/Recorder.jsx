@@ -30,7 +30,7 @@ const Recorder = ({ user, onLogout }) => {
     try {
       setHistoryLoading(true);
       const response = await axios.get(
-        "http://localhost:3000/history",
+        "https://speech-to-text-project-j95m.onrender.com/history",
         {
           headers: { Authorization: `Bearer ${getToken()}` },
         }
@@ -47,7 +47,7 @@ const Recorder = ({ user, onLogout }) => {
   const deleteTranscript = async (id) => {
     try {
       await axios.delete(
-        `http://localhost:3000/history/${id}`,
+        `https://speech-to-text-project-j95m.onrender.com/history/${id}`,
         {
           headers: { Authorization: `Bearer ${getToken()}` },
         }
@@ -69,7 +69,7 @@ const Recorder = ({ user, onLogout }) => {
       setLanguage("");
 
       const response = await axios.post(
-        "http://localhost:3000/transcribe",
+        "https://speech-to-text-project-j95m.onrender.com/transcribe",
         formData,
         {
           headers: { Authorization: `Bearer ${getToken()}` },

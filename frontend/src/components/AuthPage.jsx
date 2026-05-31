@@ -30,8 +30,8 @@ const AuthPage = ({ onLogin }) => {
       setError("");
 
       const url = isLogin
-        ? "http://localhost:3000/auth/login"
-        : "http://localhost:3000/auth/register";
+        ? "https://speech-to-text-project-j95m.onrender.com/auth/login"
+        : "https://speech-to-text-project-j95m.onrender.com/auth/register";
 
       const payload = isLogin
         ? { email, password }
