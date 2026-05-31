@@ -1,5 +1,5 @@
-import Recorder from "./components/Recorder";
-import './App.css'
+import "./App.css";
+import Recorder from "./components/RecorderSection";
 
 function App() {
   return <Recorder />;
