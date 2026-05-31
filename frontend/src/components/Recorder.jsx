@@ -5,7 +5,10 @@ import UploadSection from "./UploadSection";
 import RecordSection from "./RecordSection";
 import HistorySection from "./HistorySection";
 
-const Recorder = () => {
+// ── Token Helper ──────────────────────────────────────────
+const getToken = () => localStorage.getItem("token");
+
+const Recorder = ({ user, onLogout }) => {
   const [recording, setRecording] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [language, setLanguage] = useState("");
@@ -26,10 +29,15 @@ const Recorder = () => {
   const fetchHistory = async () => {
     try {
       setHistoryLoading(true);
-      const response = await axios.get("http://localhost:3000/history");
+      const response = await axios.get(
+        "http://localhost:3000/history",
+        {
+          headers: { Authorization: `Bearer ${getToken()}` },
+        }
+      );
       setHistory(response.data.transcripts);
     } catch (err) {
-      console.log(err);
+      console.log("History fetch error:", err);
     } finally {
       setHistoryLoading(false);
     }
@@ -38,10 +46,15 @@ const Recorder = () => {
   // ── Delete Transcript ─────────────────────────────────────
   const deleteTranscript = async (id) => {
     try {
-      await axios.delete(`http://localhost:3000/history/${id}`);
+      await axios.delete(
+        `http://localhost:3000/history/${id}`,
+        {
+          headers: { Authorization: `Bearer ${getToken()}` },
+        }
+      );
       setHistory(history.filter((t) => t._id !== id));
     } catch (err) {
-      console.log(err);
+      console.log("Delete error:", err);
     }
   };
 
@@ -54,7 +67,15 @@ const Recorder = () => {
       setError("");
       setTranscript("");
       setLanguage("");
-      const response = await axios.post("http://localhost:3000/transcribe", formData);
+
+      const response = await axios.post(
+        "http://localhost:3000/transcribe",
+        formData,
+        {
+          headers: { Authorization: `Bearer ${getToken()}` },
+        }
+      );
+
       if (!response.data.transcript) {
         setError("No speech detected. Please speak clearly and try again.");
       } else {
@@ -63,7 +84,12 @@ const Recorder = () => {
         fetchHistory();
       }
     } catch (err) {
-      setError("Transcription failed. Please try again.");
+      if (err.response?.status === 401) {
+        setError("Session expired. Please login again.");
+        onLogout();
+      } else {
+        setError(err.response?.data?.message || "Transcription failed. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -82,7 +108,10 @@ const Recorder = () => {
   };
 
   const handleFileSubmit = async () => {
-    if (!audioFile) { setError("Please select an audio file first."); return; }
+    if (!audioFile) {
+      setError("Please select an audio file first.");
+      return;
+    }
     await sendAudio(audioFile);
   };
 
@@ -95,7 +124,9 @@ const Recorder = () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
-        ? "audio/webm;codecs=opus" : "audio/webm";
+        ? "audio/webm;codecs=opus"
+        : "audio/webm";
+
       const mediaRecorder = new MediaRecorder(stream, { mimeType });
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
@@ -139,8 +170,12 @@ const Recorder = () => {
 
   // ── Clear All ─────────────────────────────────────────────
   const clearAll = () => {
-    setTranscript(""); setError(""); setAudioFile(null);
-    setAudioURL(null); setLanguage(""); setCopied(false);
+    setTranscript("");
+    setError("");
+    setAudioFile(null);
+    setAudioURL(null);
+    setLanguage("");
+    setCopied(false);
   };
 
   // ── UI ────────────────────────────────────────────────────
@@ -152,23 +187,51 @@ const Recorder = () => {
         <div className="header">
           <div className="header-icon">🎙️</div>
           <h1>Speech to Text</h1>
-          <p>Upload or record audio — get instant transcriptions</p>
+          <p>Welcome, <strong>{user.name}</strong>! 👋</p>
+
+          {/* Logout Button */}
+          <button
+            onClick={onLogout}
+            style={{
+              marginTop: "12px",
+              background: "none",
+              border: "2px solid #e0e7ff",
+              borderRadius: "999px",
+              padding: "6px 20px",
+              fontSize: "13px",
+              fontWeight: "700",
+              color: "#6b7280",
+              cursor: "pointer",
+              transition: "all 0.2s",
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.background = "#fee2e2";
+              e.target.style.borderColor = "#fecaca";
+              e.target.style.color = "#ef4444";
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.background = "none";
+              e.target.style.borderColor = "#e0e7ff";
+              e.target.style.color = "#6b7280";
+            }}
+          >
+            🚪 Logout
+          </button>
         </div>
 
         {/* Main Card */}
         <div className="card">
 
           {/* Upload Section */}
-          {/* Upload Section */}
-<UploadSection
-  audioFile={audioFile}
-  audioURL={audioURL}
-  loading={loading}
-  recording={recording}
-  onFileUpload={handleFileUpload}
-  onFileSubmit={handleFileSubmit}
-  onError={setError}  // ✅ Error setter pass karo
-/>
+          <UploadSection
+            audioFile={audioFile}
+            audioURL={audioURL}
+            loading={loading}
+            recording={recording}
+            onFileUpload={handleFileUpload}
+            onFileSubmit={handleFileSubmit}
+            onError={setError}
+          />
 
           {/* Divider */}
           <div className="divider">
@@ -233,7 +296,9 @@ const Recorder = () => {
         />
 
         {/* Footer */}
-        <p className="footer">Built with ❤️ using React + Node.js + AssemblyAI</p>
+        <p className="footer">
+          Built with ❤️ using React + Node.js + AssemblyAI
+        </p>
 
       </div>
     </div>

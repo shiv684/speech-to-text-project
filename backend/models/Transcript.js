@@ -10,9 +10,15 @@ const transcriptSchema = new mongoose.Schema(
       type: String,
       default: "unknown",
     },
+    // ✅ User reference add kiya
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
   },
   {
-    timestamps: true, // createdAt aur updatedAt automatically add hoga
+    timestamps: true,
   }
 );
 
