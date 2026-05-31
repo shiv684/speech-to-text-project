@@ -159,14 +159,16 @@ const Recorder = () => {
         <div className="card">
 
           {/* Upload Section */}
-          <UploadSection
-            audioFile={audioFile}
-            audioURL={audioURL}
-            loading={loading}
-            recording={recording}
-            onFileUpload={handleFileUpload}
-            onFileSubmit={handleFileSubmit}
-          />
+          {/* Upload Section */}
+<UploadSection
+  audioFile={audioFile}
+  audioURL={audioURL}
+  loading={loading}
+  recording={recording}
+  onFileUpload={handleFileUpload}
+  onFileSubmit={handleFileSubmit}
+  onError={setError}  // ✅ Error setter pass karo
+/>
 
           {/* Divider */}
           <div className="divider">
