@@ -4,13 +4,14 @@ const multer = require("multer");
 const mongoose = require("mongoose");
 const fs = require("fs");
 const { AssemblyAI } = require("assemblyai");
+const Transcript = require("./models/Transcript"); // ✅ Model import
 require("dotenv").config();
 
 const app = express();
 
 app.use(cors({
   origin: "http://localhost:5173",
-  methods: ["GET", "POST"],
+  methods: ["GET", "POST", "DELETE"],
 }));
 app.use(express.json());
 
@@ -44,18 +45,9 @@ app.get("/", (req, res) => {
   res.send("Backend is running");
 });
 
-// ── Upload Route ──────────────────────────────────────────
-app.post("/upload", upload.single("audio"), (req, res) => {
-  res.json({
-    message: "File uploaded successfully",
-    file: req.file,
-  });
-});
-
 // ── Transcribe Route ──────────────────────────────────────
 app.post("/transcribe", upload.single("audio"), async (req, res) => {
   try {
-    // Validate file
     if (!req.file) {
       return res.status(400).json({
         success: false,
@@ -65,31 +57,37 @@ app.post("/transcribe", upload.single("audio"), async (req, res) => {
 
     const filePath = req.file.path;
 
-    // ✅ AssemblyAI transcribe with speech_model
-   const result = await client.transcripts.transcribe({
-  audio: fs.createReadStream(filePath),
-  speech_models: ["universal-2"],
-  language_detection: true,
-  punctuate: true,
-  format_text: true,
-});
+    // AssemblyAI se transcript lo
+    const result = await client.transcripts.transcribe({
+      audio: fs.createReadStream(filePath),
+      speech_models: ["universal-2"],
+      language_detection: true,
+      punctuate: true,
+      format_text: true,
+    });
 
-    // Delete file after transcription
+    // File delete karo
     fs.unlinkSync(filePath);
 
-    // Check if transcript is empty
     if (!result.text || result.text.trim() === "") {
       return res.json({
         success: true,
         transcript: "",
-        message: "No speech detected. Please speak clearly and try again.",
+        message: "No speech detected. Please speak clearly.",
       });
     }
+
+    // ✅ MongoDB mein save karo
+    const saved = await Transcript.create({
+      text: result.text,
+      language: result.language_code || "unknown",
+    });
 
     res.json({
       success: true,
       transcript: result.text,
       language: result.language_code,
+      id: saved._id,
     });
 
   } catch (error) {
@@ -102,8 +100,32 @@ app.post("/transcribe", upload.single("audio"), async (req, res) => {
   }
 });
 
+// ── History Route — Sab transcripts lo ───────────────────
+app.get("/history", async (req, res) => {
+  try {
+    const transcripts = await Transcript.find()
+      .sort({ createdAt: -1 }) // newest pehle
+      .limit(20);              // sirf 20 dikhao
+
+    res.json({ success: true, transcripts });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Failed to fetch history" });
+  }
+});
+
+// ── Delete Route — Ek transcript delete karo ─────────────
+app.delete("/history/:id", async (req, res) => {
+  try {
+    await Transcript.findByIdAndDelete(req.params.id);
+    res.json({ success: true, message: "Deleted successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Failed to delete" });
+  }
+});
+
 // ── Server Start ──────────────────────────────────────────
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
-
