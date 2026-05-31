@@ -48,6 +48,12 @@ const upload = multer({
   fileFilter,
   limits: { fileSize: 25 * 1024 * 1024 },
 });
+// ── uploads folder banao agar exist nahi karta ────────────
+const path = require("path");
+const uploadsDir = path.join(__dirname, "uploads");
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir);
+}
 
 // ── MongoDB Connect ───────────────────────────────────────
 mongoose
