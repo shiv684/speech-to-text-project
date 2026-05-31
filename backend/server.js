@@ -14,7 +14,11 @@ require("dotenv").config();
 const app = express();
 
 app.use(cors({
-  origin: ["http://localhost:5173", "http://localhost:5174"],
+  origin: [
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "https://shiny-fudge-1a802e.netlify.app", // ✅ Add karo
+  ],
   methods: ["GET", "POST", "DELETE"],
 }));
 app.use(express.json());
